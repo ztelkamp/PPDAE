@@ -4,4 +4,6 @@ src/.ipynb_checkpoints/
 .DS_Store
 .virtual_documents/
 wandb/
+data/MNIST/
+data/PPD/
 src/__pycache__/
