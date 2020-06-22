@@ -54,7 +54,7 @@ parser.add_argument('--comment', dest='comment', type=str, default='',
 args = parser.parse_args()
 
 # Initialize W&B project
-wandb.init(entity='GeepGen-PPD', project="PPD-AE", tags='VAE')
+wandb.init(project="PPD-AE", tags='VAE')
 wandb.config.update(args)
 wandb.config.rnd_seed = rnd_seed
 

@@ -23,8 +23,7 @@ class ProtoPlanetaryDisks(Dataset):
         elif machine == 'exalearn':
             ppd_path = '%s/' % (exalearn_root)
         else:
-            print('Wrong host, please select local, colab or exalearn')
-            sys.exit()
+            raise('Wrong host, please select local, colab or exalearn')
 
         self.meta = np.load('%s/param_arr.npy' % (ppd_path))
         self.meta = self.meta.astype(np.float32)
@@ -37,7 +36,8 @@ class ProtoPlanetaryDisks(Dataset):
             idx = np.random.randint(0, self.meta.shape[0], 1000)
             self.imgs = self.imgs[idx]
             self.meta = self.meta[idx]
-        
+        self.img_dim = self.imgs[0].shape[-1]
+
         # if scaler == 'MinMaxScaler':
         #     self._scaler = preprocessing.MinMaxScaler()
         # if scaler == 'Normalizer':
@@ -48,7 +48,7 @@ class ProtoPlanetaryDisks(Dataset):
     def __getitem__(self, index):
         imgs = self.imgs[index]
         meta = self.meta[index]
-        return lc, meta_p
+        return imgs, meta
 
     def __len__(self):
         return len(self.imgs)
@@ -78,7 +78,7 @@ class ProtoPlanetaryDisks(Dataset):
                                       sampler=train_sampler,
                                       drop_last=False)
             test_loader = DataLoader(self, batch_size=batch_size,
-                                      sampler=test_sampler,
+                                     sampler=test_sampler,
                                      drop_last=False)
 
         return train_loader, test_loader
@@ -106,6 +106,7 @@ class MNIST(Dataset):
                 torchvision.transforms.Normalize(
                     (0.1307,), (0.3081,))
             ]))
+        self.img_dim = self.test[0][0].shape[-1]
 
     def __getitem__(self, index):
         return self.test[index]

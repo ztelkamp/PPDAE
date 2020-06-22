@@ -52,7 +52,7 @@ parser.add_argument('--comment', dest='comment', type=str, default='',
 args = parser.parse_args()
 
 # Initialize W&B project
-wandb.init(entity='GeepGen-PPD', project="PPD-AE", tags='VAE')
+wandb.init(project="PPD-AE", tags='AE')
 wandb.config.update(args)
 wandb.config.rnd_seed = rnd_seed
 
@@ -87,7 +87,7 @@ def run_code():
     print('Physic dimension: ', wandb.config.physics_dim)
 
     # Define AE model, Ops, and Train #
-    model = TranConv_AutoEncoder(latent_dim=args.latent_dim,
+    model = ConvLin_AutoEncoder(latent_dim=args.latent_dim,
                                 img_dim=img_dim[-1])
     wandb.watch(model, log='gradients')
 
