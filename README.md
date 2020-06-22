@@ -31,6 +31,8 @@ Use `ae_main.py` to train a AE model with the following parameters:
 
 ### Recontruction examples
 
+Training logs and models https://app.wandb.ai/jorgemarpa/PPD-AE/overview
+
 ## Sources and inspiration
 
 * https://www.jeremyjordan.me/variational-autoencoders/
