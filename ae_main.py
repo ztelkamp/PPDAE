@@ -82,13 +82,13 @@ def run_code():
                                                        shuffle=True,
                                                        test_split=.2,
                                                        random_seed=rnd_seed)
-    img_dim = dataset[0][0].shape
+    
     wandb.config.physics_dim = len(dataset.phy_names) if args.data == 'PPD' else 0
     print('Physic dimension: ', wandb.config.physics_dim)
 
     # Define AE model, Ops, and Train #
     model = ConvLin_AutoEncoder(latent_dim=args.latent_dim,
-                                img_dim=img_dim[-1])
+                                img_dim=dataset.img_dim)
     wandb.watch(model, log='gradients')
 
     wandb.config.n_train_params = count_parameters(model)

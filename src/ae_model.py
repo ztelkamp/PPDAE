@@ -54,7 +54,7 @@ class Linear_AutoEncoder(nn.Module):
 
 
 class TranConv_AutoEncoder(nn.Module):
-    def __init__(self, latent_dim, img_dim=28):
+    def __init__(self, latent_dim, img_dim=28, dropout=.2):
         super(TranConv_AutoEncoder, self).__init__()
         self.latent_dim = latent_dim
         self.img_width = self.img_height = img_dim
