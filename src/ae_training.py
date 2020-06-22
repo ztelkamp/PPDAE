@@ -25,51 +25,53 @@ class Trainer():
         self.test_loss = {'Loss': []}
         self.num_steps = 0
         self.print_every = print_every
-        self.mse_loss = nn.MSELoss(reduction='sum')
+        self.mse_loss = nn.MSELoss(reduction='mean')
         self.wb = wandb
 
     def _loss(self, x, xhat, train=True, ep=0):
         loss = self.mse_loss(xhat, x)
 
         if train:
-            self.train_loss['Loss'].append(loss.item() / len(x))
+            self.train_loss['Loss'].append(loss.item())
         else:
-            self.test_loss['Loss'].append(loss.item() / len(x))
+            self.test_loss['Loss'].append(loss.item())
 
         return loss
 
     def _train_epoch(self, data_loader, epoch):
         self.model.train()
         # iterate over len(data)/batch_size
-        z = []
-        xhat_plot, x_plot, l_plot = [], [], []
-        for i, data in enumerate(data_loader):
+        z_all = []
+        xhat_plot, x_plot = [], []
+        for i, (img, meta) in enumerate(data_loader):
             self.num_steps += 1
             self.opt.zero_grad()
-            data = data.to(self.device)
+            img = img.to(self.device)
 
-            xhat, z = self.model(data)
+            xhat, z = self.model(img)
 
-            loss = self._loss(data, xhat, train=True, ep=epoch)
+            loss = self._loss(img, xhat, train=True, ep=epoch)
             loss.backward()
             self.opt.step()
 
             self._report_train(i)
-            z.append(mu.data.cpu().numpy())
+            z_all.append(z.data.cpu().numpy())
             if i == len(data_loader) - 1:
                 xhat_plot = xhat.data.cpu().numpy()
-                x_plot = data.data.cpu().numpy()
+                x_plot = img.data.cpu().numpy()
 
-        z = np.concatenate(z)
+        z_all = np.concatenate(z_all)
+        z_all = z_all[np.random.choice(z_all.shape[0], 1000,
+                                       replace=False), :]
 
-        if epoch % 2 == 0:
+        if epoch % 1 == 0:
             wall = plot_recon_wall(xhat_plot, x_plot, epoch=epoch)
             self.wb.log({'Train_Recon':  self.wb.Image(wall)},
                         step=self.num_steps)
 
-        if epoch % 5 == 0:
-            latent_plot = plot_latent_space(z, y=None)
-            self.wb.log({'Latent_space': self.wb.Image(latent_plot)}, 
+        if epoch % 1 == 0:
+            latent_plot = plot_latent_space(z_all, y=None)
+            self.wb.log({'Latent_space': self.wb.Image(latent_plot)},
                         step=self.num_steps)
 
     def _test_epoch(self, test_loader, epoch):
@@ -77,14 +79,14 @@ class Trainer():
         with torch.no_grad():
             xhat_plot, x_plot = [], []
 
-            for i, (data) in enumerate(test_loader):
-                data = data.to(self.device)
-                xhat, z = self.model(data)
-                loss = self._loss(data, xhat, train=False, ep=epoch)
+            for i, (img, meta) in enumerate(test_loader):
+                img = img.to(self.device)
+                xhat, z = self.model(img)
+                loss = self._loss(img, xhat, train=False, ep=epoch)
 
                 if i == len(test_loader) - 1:
                     xhat_plot = xhat.data.cpu().numpy()
-                    x_plot = data.data.cpu().numpy()
+                    x_plot = img.data.cpu().numpy()
 
         self._report_test(epoch)
 
@@ -139,7 +141,7 @@ class Trainer():
                     break
 
         if save:
-            torch.save(self.model.state_dict(), '%s/model.pt' % 
+            torch.save(self.model.state_dict(), '%s/model.pt' %
                        (self.wb.run.dir))
 
     def _report_train(self, i):
@@ -148,7 +150,7 @@ class Trainer():
         if i % self.print_every == 0:
             print("Training iteration %i, global step %i" %
                   (i + 1, self.num_steps))
-            print("Loss: %3.2f" % (self.train_loss['Loss'][-1]))
+            print("Loss: %.4f" % (self.train_loss['Loss'][-1]))
 
             self.wb.log({'Train_Loss': self.train_loss['Loss'][-1]},
                         step=self.num_steps)
@@ -159,7 +161,7 @@ class Trainer():
         # print scalars to std output and save scalars/hist to W&B
         print('*** TEST LOSS ***')
         print("Epoch %i, global step %i" % (ep, self.num_steps))
-        print("Loss: %.2f" % (self.test_loss['Loss'][-1]))
+        print("Loss: %.4f" % (self.test_loss['Loss'][-1]))
 
         self.wb.log({'Test_Loss': self.test_loss['Loss'][-1]},
                     step=self.num_steps)
