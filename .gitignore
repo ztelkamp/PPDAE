@@ -1,5 +1,7 @@
 # ignore folders
 .ipynb_checkpoints/
+src/.ipynb_checkpoints/
 .DS_Store
 .virtual_documents/
+wandb/
 src/__pycache__/
