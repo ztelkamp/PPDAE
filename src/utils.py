@@ -51,19 +51,23 @@ def plot_recon_wall(xhat, x, epoch=0):
     """
 
     plt.close('all')
+    ncols = 10
+    fig, axis = plt.subplots(nrows=3, ncols=ncols, figsize=(ncols, 4))
+    for i in range(ncols):
+        axis[0, i].imshow(x[i, 0, :, :], interpolation='bilinear',
+                          cmap=cm.gray, origin='upper', aspect='equal')
+        axis[1, i].imshow(xhat[i, 0, :, :], interpolation='bilinear',
+                          cmap=cm.gray, origin='upper', aspect='equal')
+        axis[2, i].imshow(x[i, 0, :, :] - xhat[i, 0, :, :],
+                          interpolation='bilinear',
+                          cmap=cm.gray, origin='upper', aspect='equal')
 
-    fig, axis = plt.subplots(nrows=3, ncols=5, figsize=(16, 4))
-    for i in enumerate(5):
-        axis[0, i].imshow(x, interpolation='bilinear',
-                          cmap=cm.gray, origin='lower')
-        axis[1, i].imshow(xhat, interpolation='bilinear',
-                          cmap=cm.gray, origin='lower')
-        axis[2, i].imshow(x - xhat, interpolation='bilinear',
-                          cmap=cm.gray, origin='lower')
-
+    for ax in axis.ravel():
+        ax.axes.get_xaxis().set_visible(False)
+        ax.axes.get_yaxis().set_visible(False)
+    fig.subplots_adjust(wspace=0, hspace=0, left=0, right=1)
     fig.suptitle('Reconstruction [Epoch %s]' % epoch,
-                 fontsize=20, y=1.025)
-    plt.tight_layout()
+                 fontsize=20, y=.95)
     fig.canvas.draw()
     return fig
 
@@ -130,6 +134,8 @@ def plot_latent_space(z, y=None):
         image of matplotlib figure
     """
     plt.close('all')
+    if z.shape[1] > 8:
+        z = z[:,:8]
     df = pd.DataFrame(z)
     if y is not None:
         df.loc[:, 'y'] = y
