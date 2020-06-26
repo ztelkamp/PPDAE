@@ -121,10 +121,8 @@ class ConvLin_AutoEncoder(nn.Module):
             self.enc_conv_blocks.add_module('avgpool_%i' % (i+1),
                                             nn.AvgPool2d(2, stride=2))
             h_ch *= 2
-            img_dim = conv_out(img_dim, kernel, 1)
-            print(img_dim)
+            img_dim = conv_out(img_dim, kernel, 1)cho
             img_dim = avgpool_out(img_dim, 2, 2)
-            print(h_ch, img_dim)
 
         self.enc_linear = nn.Sequential(
             nn.Linear(h_ch * img_dim**2, 50),

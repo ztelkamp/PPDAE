@@ -46,6 +46,10 @@ parser.add_argument('--latent-dim', dest='latent_dim', type=int, default=32,
                     help='dimension of latent space [32]')
 parser.add_argument('--dropout', dest='dropout', type=float, default=0.2,
                     help='dropout for all layers [0.2]')
+parser.add_argument('--kernel-size', dest='kernel_size', type=int, default=3,
+                    help='2D conv kernel size, encoder [3]')
+parser.add_argument('--conv-blocks', dest='conv_blocks', type=int, default=5,
+                    help='conv+actfx+pool blocks [5]')
 
 parser.add_argument('--comment', dest='comment', type=str, default='',
                     help='extra comments')
@@ -93,7 +97,9 @@ def run_code():
 
     # Define AE model, Ops, and Train #
     model = ConvLin_AutoEncoder(latent_dim=args.latent_dim,
-                                img_dim=dataset.img_dim)
+                                img_dim=dataset.img_dim,
+                                kernel=args.kernel_size,
+                                n_conv_blocks=args.conv_blocks)
     wandb.watch(model, log='gradients')
 
     wandb.config.n_train_params = count_parameters(model)
