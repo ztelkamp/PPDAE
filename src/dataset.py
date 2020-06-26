@@ -1,21 +1,60 @@
 import os
 import numpy as np
 import torch
-import gzip
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.sampler import SubsetRandomSampler
 import torchvision
-from sklearn import preprocessing
+# from sklearn import preprocessing
 
-root = os.path.dirname(os.getcwd())
+root = os.getcwd()
 colab_root = '/content/drive/My Drive/PPDAE'
 exalearn_root = '/home/jorgemarpa/data/PPD'
 
 
+class MyRotationTransform:
+    """Rotate by a random N times 90 deg."""
+
+    def __init__(self):
+        pass
+
+    def __call__(self, x):
+        shape = x.shape
+        return np.rot90(x, np.random.choice([0, 1, 2, 3]),
+                        axes=[-2, -1]).copy()
+
+
+class MyFlipVerticalTransform:
+    """Random vertical flip."""
+
+    def __init__(self, prob=.5):
+        self.prob = prob
+
+    def __call__(self, x):
+        if np.random.uniform() >= self.prob:
+            return np.flip(x, -2).copy()
+        else:
+            return x
+
+
+class MyNormTransform:
+    """Normalization."""
+
+    def __init__(self, mean=0., std=1.):
+        self.mean = np.array(mean)
+        self.std = np.array(std)
+        if self.mean.ndim == 1:
+            self.mean = self.mean[None, :, None, None]
+        if self.std.ndim == 1:
+            self.std = self.std[None, :, None, None]
+
+    def __call__(self, x):
+        return (x - self.mean) / self.std
+
+
 # load pkl synthetic light-curve files to numpy array
 class ProtoPlanetaryDisks(Dataset):
-    def __init__(self, machine='local',
-                 subsample=False, pp_scaler='MinMaxScaler'):
+    def __init__(self, machine='local', transform=True,
+                 subsample=False, img_norm=True):
         if machine == 'local':
             ppd_path = '%s/data/PPD' % (root)
         elif machine == 'colab':
@@ -27,27 +66,32 @@ class ProtoPlanetaryDisks(Dataset):
 
         self.meta = np.load('%s/param_arr.npy' % (ppd_path))
         self.meta = self.meta.astype(np.float32)
-        self.meta_names = ['m_dust', 'Rc', 'f_exp', 'H0', 
+        self.meta_names = ['m_dust', 'Rc', 'f_exp', 'H0',
                            'Rin', 'sd_exp', 'a_max', 'inc']
-        self.imgs = np.load('%s/param_arr.npy' % (ppd_path))
+        self.img_norm = img_norm
+        if not self.img_norm:
+            self.imgs = np.load('%s/img_array.npy' % (ppd_path))
+            self.imgs = np.expand_dims(self.imgs, axis=1)
+        else:
+            self.imgs = np.load('%s/img_norm_array.npy' % (ppd_path))
         self.imgs = self.imgs.astype(np.float32)
-        del self.aux
+        # imgs has shape [batch_size, channels, height, width]
         if subsample:
             idx = np.random.randint(0, self.meta.shape[0], 1000)
             self.imgs = self.imgs[idx]
             self.meta = self.meta[idx]
         self.img_dim = self.imgs[0].shape[-1]
+        self.transform = transform
+        self.transform_fx = torchvision.transforms.Compose([
+            MyRotationTransform(),
+            MyFlipVerticalTransform()])
 
-        # if scaler == 'MinMaxScaler':
-        #     self._scaler = preprocessing.MinMaxScaler()
-        # if scaler == 'Normalizer':
-        #     self._scaler = preprocessing.Normalizer()
-        # self._scaler.fit(self.meta)
-        # self.meta_p = self._scaler.transform(self.meta)
 
     def __getitem__(self, index):
         imgs = self.imgs[index]
         meta = self.meta[index]
+        if self.transform:
+            imgs = self.transform_fx(imgs)
         return imgs, meta
 
     def __len__(self):
@@ -66,7 +110,8 @@ class ProtoPlanetaryDisks(Dataset):
             dataset_size = len(self)
             indices = list(range(dataset_size))
             split = int(np.floor(test_split * dataset_size))
-            np.random.shuffle(indices)
+            if shuffle:
+                np.random.shuffle(indices)
             train_indices, test_indices = indices[split:], indices[:split]
             del indices, split
 
@@ -117,12 +162,12 @@ class MNIST(Dataset):
     def get_dataloader(self, batch_size=32, shuffle=True,
                        test_split=.2, random_seed=32):
 
-        train_loader = torch.utils.data.DataLoader(self.train,
-                                                   batch_size=batch_size,
-                                                   shuffle=shuffle)
+        train_loader = DataLoader(self.train,
+                                  batch_size=batch_size,
+                                  shuffle=shuffle)
 
-        test_loader = torch.utils.data.DataLoader(self.test,
-                                                  batch_size=batch_size,
-                                                  shuffle=shuffle)
+        test_loader = DataLoader(self.test,
+                                 batch_size=batch_size,
+                                 shuffle=shuffle)
 
         return train_loader, test_loader

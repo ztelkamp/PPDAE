@@ -25,8 +25,8 @@ parser.add_argument('--dry-run', dest='dry_run', action='store_true',
 parser.add_argument('--machine', dest='machine', type=str, default='local',
                     help='were to is running (local, colab, [exalearn])')
 
-parser.add_argument('--data', dest='data', type=str, default='MNIST',
-                    help='data used for training ([MNIST], PPD)')
+parser.add_argument('--data', dest='data', type=str, default='PPD',
+                    help='data used for training (MNIST, [PPD])')
 
 parser.add_argument('--lr', dest='lr', type=float, default=1e-4,
                     help='learning rate [1e-4]')
@@ -64,7 +64,8 @@ def run_code():
         torch.cuda.empty_cache()
     # Load Data #
     if args.data == 'PPD':
-        dataset = ProtoPlanetaryDisks()
+        dataset = ProtoPlanetaryDisks(machine=args.machine, transform=True,
+                                      img_norm=True)
     elif args.data == 'MNIST':
         dataset = MNIST(args.machine)
     else:
@@ -82,8 +83,12 @@ def run_code():
                                                        shuffle=True,
                                                        test_split=.2,
                                                        random_seed=rnd_seed)
-    
-    wandb.config.physics_dim = len(dataset.phy_names) if args.data == 'PPD' else 0
+
+    if args.data == 'PPD' and args.cond == 'T':
+        wandb.config.physics_dim = len(dataset.meta_names)
+    else:
+        wandb.config.physics_dim = 0
+
     print('Physic dimension: ', wandb.config.physics_dim)
 
     # Define AE model, Ops, and Train #
