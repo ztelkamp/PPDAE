@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchvision.models as models
 
 
 class Linear_AutoEncoder(nn.Module):
@@ -159,3 +160,122 @@ class ConvLin_AutoEncoder(nn.Module):
         code = self.encode(images)
         out = self.decode(code)
         return out, code
+
+
+class ResNet_AE(nn.Module):
+    def __init__(self, fc_hidden1=128, fc_hidden2=64, dropout=0.3,
+                 latent_dim=32, in_ch=1, img_dim=28):
+        super(ResNet_AE, self).__init__()
+
+        self.fc_hidden1, self.fc_hidden2 = fc_hidden1, fc_hidden2
+        self.latent_dim = latent_dim
+        self.img_width = self.img_height = img_dim
+
+        # CNN architechtures
+        self.ch1, self.ch2, self.ch3, self.ch4 = 16, 32, 64, 128
+        # 2d kernal size
+        self.k1, self.k2, self.k3, self.k4 = (5, 5), (3, 3), (3, 3), (3, 3)
+        # 2d strides
+        self.s1, self.s2, self.s3, self.s4 = (2, 2), (2, 2), (2, 2), (2, 2)
+        # 2d padding
+        self.pd1, self.pd2, self.pd3, self.pd4 = (0, 0), (0, 0), (0, 0), (0, 0)
+
+        # encoding components
+        resnet = models.resnet18(pretrained=False)
+        modules = list(resnet.children())[:-1]      # delete the last fc layer.
+        # add 1 cnv layer if input channels are different than 3
+        if in_ch != 3:
+            first_conv_layer = [nn.Conv2d(in_ch, 3, kernel_size=3,
+                                          stride=1, padding=1, dilation=1,
+                                          groups=1, bias=True)]
+            first_conv_layer.extend(modules)
+            modules = first_conv_layer
+            del first_conv_layer
+        self.resnet = nn.Sequential(*modules)
+        self.fc1 = nn.Linear(resnet.fc.in_features, self.fc_hidden1)
+        self.bn1 = nn.BatchNorm1d(self.fc_hidden1, momentum=0.01)
+        self.fc2 = nn.Linear(self.fc_hidden1, self.fc_hidden2)
+        self.bn2 = nn.BatchNorm1d(self.fc_hidden2, momentum=0.01)
+        # Latent vectors
+        self.fc3_z = nn.Linear(self.fc_hidden2, self.latent_dim)
+
+        # Sampling vector
+        self.fc4 = nn.Linear(self.latent_dim, self.fc_hidden1)
+        self.fc_bn4 = nn.BatchNorm1d(self.fc_hidden1)
+        self.fc5 = nn.Linear(self.fc_hidden1, 128 * 4 * 4)
+        self.fc_bn5 = nn.BatchNorm1d(128 * 4 * 4)
+        self.relu = nn.ReLU(inplace=True)
+
+        # Decoder
+        self.convTrans6 = nn.Sequential(
+            nn.ConvTranspose2d(in_channels=128, out_channels=64,
+                               kernel_size=self.k4, stride=self.s4,
+                               padding=self.pd4),
+            nn.BatchNorm2d(64, momentum=0.01),
+            nn.ReLU(inplace=True),
+        )
+        self.convTrans7 = nn.Sequential(
+            nn.ConvTranspose2d(in_channels=64, out_channels=32,
+                               kernel_size=self.k3, stride=self.s3,
+                               padding=self.pd3),
+            nn.BatchNorm2d(32, momentum=0.01),
+            nn.ReLU(inplace=True),
+        )
+        self.convTrans8 = nn.Sequential(
+            nn.ConvTranspose2d(in_channels=32, out_channels=16,
+                               kernel_size=self.k3, stride=self.s3,
+                               padding=self.pd3),
+            nn.BatchNorm2d(16, momentum=0.01),
+            nn.ReLU(inplace=True),
+        )
+        self.convTrans9 = nn.Sequential(
+            nn.ConvTranspose2d(in_channels=16, out_channels=8,
+                               kernel_size=self.k3, stride=self.s3,
+                               padding=self.pd3),
+            nn.BatchNorm2d(8, momentum=0.01),
+            nn.ReLU(inplace=True),
+        )
+        self.convTrans10 = nn.Sequential(
+            nn.ConvTranspose2d(in_channels=8, out_channels=in_ch,
+                               kernel_size=self.k2, stride=self.s2,
+                               padding=self.pd2),
+            nn.BatchNorm2d(in_ch, momentum=0.01),
+            nn.Sigmoid()    # y = (y1, y2, y3) \in [0 ,1]^3
+        )
+
+    def encode(self, x):
+        x = self.resnet(x)  # ResNet
+        x = x.view(x.size(0), -1)  # flatten output of conv
+
+        # FC layers
+        x = self.relu(self.bn1(self.fc1(x)))
+        x = self.relu(self.bn2(self.fc2(x)))
+        # x = F.dropout(x, p=self.dropout, training=self.training)
+        x = self.fc3_z(x)
+        return x
+
+    def decode(self, z):
+        x = self.relu(self.fc_bn4(self.fc4(z)))
+        print(x.shape)
+        x = self.relu(self.fc_bn5(self.fc5(x))).view(-1, 128, 4, 4)
+        print(x.shape)
+        x = self.convTrans6(x)
+        print(x.shape)
+        x = self.convTrans7(x)
+        print(x.shape)
+        x = self.convTrans8(x)
+        print(x.shape)
+        x = self.convTrans9(x)
+        print(x.shape)
+        x = self.convTrans10(x)
+        print(x.shape)
+        x = F.interpolate(x, size=(self.img_width, self.img_height),
+                          mode='bilinear')
+        print(x.shape)
+        return x
+
+    def forward(self, x):
+        z = self.encode(x)
+        x_reconst = self.decode(z)
+
+        return x_reconst, z
