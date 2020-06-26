@@ -256,22 +256,14 @@ class ResNet_AE(nn.Module):
 
     def decode(self, z):
         x = self.relu(self.fc_bn4(self.fc4(z)))
-        print(x.shape)
         x = self.relu(self.fc_bn5(self.fc5(x))).view(-1, 128, 4, 4)
-        print(x.shape)
         x = self.convTrans6(x)
-        print(x.shape)
         x = self.convTrans7(x)
-        print(x.shape)
         x = self.convTrans8(x)
-        print(x.shape)
         x = self.convTrans9(x)
-        print(x.shape)
         x = self.convTrans10(x)
-        print(x.shape)
         x = F.interpolate(x, size=(self.img_width, self.img_height),
                           mode='bilinear')
-        print(x.shape)
         return x
 
     def forward(self, x):
