@@ -79,8 +79,7 @@ class TranConv_AutoEncoder(nn.Module):
             nn.ReLU(),
             nn.ConvTranspose2d(3, 3, kernel_size=2, stride=2),
             nn.ReLU(),
-            nn.ConvTranspose2d(3, 1, kernel_size=2, stride=2),
-            nn.Sigmoid()
+            nn.ConvTranspose2d(3, 1, kernel_size=2, stride=2)
         )
 
     def encode(self, images):
@@ -96,25 +95,39 @@ class TranConv_AutoEncoder(nn.Module):
         out = self.decode(code)
         return out, code.flatten(1)
 
-    
+
 class ConvLin_AutoEncoder(nn.Module):
-    def __init__(self, latent_dim=32, img_dim=28, dropout=.2):
+    def __init__(self, latent_dim=32, img_dim=28, dropout=.2,
+                 kernel=3, n_conv_blocks=5):
         super(ConvLin_AutoEncoder, self).__init__()
         self.latent_dim = latent_dim
         self.img_width = self.img_height = img_dim
         self.img_size = self.img_width * self.img_height
 
         # Encoder specification
-        self.enc_1 = nn.Sequential(
-            nn.Conv2d(1, 3, kernel_size=5),  # (N, 1, 28, 28)->(N,  3, 24, 24)
-            nn.ReLU(),
-            nn.AvgPool2d(2, stride=2),       # (N, 3, 24, 24)->(N,  3, 12, 12)
-            nn.Conv2d(3, 6, kernel_size=3),  # (N, 3, 24, 24)->(N,  3, 10, 10)
-            nn.ReLU(),
-            nn.AvgPool2d(2, stride=2)   # (N, 6, 10, 10) -> (N,  6, 5, 5)
-        )
+        def conv_out(l0, k, st):
+            return int((l0 - k)/st + 1)
+
+        def avgpool_out(l0, k, st):
+            return int((l0 - k)/st + 1)
+
+        self.enc_conv_blocks = nn.Sequential()
+        h_ch = 1
+        for i in range(n_conv_blocks):
+            self.enc_conv_blocks.add_module('conv2d_%i' % (i+1),
+                                            nn.Conv2d(h_ch, h_ch*2,
+                                                      kernel_size=kernel))
+            self.enc_conv_blocks.add_module('relu_%i' % (i+1), nn.ReLU())
+            self.enc_conv_blocks.add_module('avgpool_%i' % (i+1),
+                                            nn.AvgPool2d(2, stride=2))
+            h_ch *= 2
+            img_dim = conv_out(img_dim, kernel, 1)
+            print(img_dim)
+            img_dim = avgpool_out(img_dim, 2, 2)
+            print(h_ch, img_dim)
+
         self.enc_linear = nn.Sequential(
-            nn.Linear(6*5*5, 50),
+            nn.Linear(h_ch * img_dim**2, 50),
             nn.ReLU(),
             nn.Linear(50, self.latent_dim),
         )
@@ -134,7 +147,7 @@ class ConvLin_AutoEncoder(nn.Module):
         )
 
     def encode(self, images):
-        feats = self.enc_1(images)
+        feats = self.enc_conv_blocks(images)
         feats = feats.flatten(1)
         code = self.enc_linear(feats)
         return code
