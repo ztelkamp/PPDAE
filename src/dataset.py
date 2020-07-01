@@ -8,7 +8,7 @@ import torchvision
 
 root = os.getcwd()
 colab_root = '/content/drive/My Drive/PPDAE'
-exalearn_root = '/home/jorgemarpa/data/PPD'
+exalearn_root = '/home/jorgemarpa/data/imgs/PPD'
 
 
 class MyRotationTransform:
@@ -53,8 +53,55 @@ class MyNormTransform:
 
 # load pkl synthetic light-curve files to numpy array
 class ProtoPlanetaryDisks(Dataset):
+    """
+    Dataset class that loads synthetic images of Protoplanetary disks,
+    the dataset has shape [N, C, H, W] = [36518, 1, 187, 187]
+    ...
+    
+    Attributes
+    ----------
+    imgs        : array
+        array with images
+    meta        : array
+        array with physical parameters asociated to each image
+    meta_names  : list
+        list with the names of the physical parameters (8 columns)
+    img_dim     : int
+        image dimension, assuming square ratio
+    img_channel : int
+        number of channels per image
+    transform   : bool
+        apply rotation and flip transformation
+    transform_fx : torchvision transformations
+        set of transformations to be applyed when calling an item
+    
+    Methods
+    -------
+    __getitem__(self, index)
+        return data in the index position, apply transform_fx if transform
+        is True
+    __len__(self)
+        return the total length of the entire dataset
+    get_dataloader(self, batch_size=32, shuffle=True,
+                   test_split=0.2, random_seed=42)
+        return a dataloader object for trainning and testing
+    """
     def __init__(self, machine='local', transform=True,
                  subsample=False, img_norm=True):
+        """
+        Parameters
+        ----------
+        machine    : bool, optional
+            which machine is been used (colab, exalearn, [local])
+        transform  : bool, optional
+            if apply or not image transformation when getting new item
+        subsample  : bool, optional
+            wheather to subsample the entire dataset, for fastloading and
+            testing purposes
+        img_norm   : bool, optional
+            load images that are scaled to [0,1] when True, or raw images
+            when False.
+        """
         if machine == 'local':
             ppd_path = '%s/data/PPD' % (root)
         elif machine == 'colab':
@@ -75,12 +122,13 @@ class ProtoPlanetaryDisks(Dataset):
         else:
             self.imgs = np.load('%s/img_norm_array.npy' % (ppd_path))
         self.imgs = self.imgs.astype(np.float32)
-        # imgs has shape [batch_size, channels, height, width]
+
         if subsample:
             idx = np.random.randint(0, self.meta.shape[0], 1000)
             self.imgs = self.imgs[idx]
             self.meta = self.meta[idx]
         self.img_dim = self.imgs[0].shape[-1]
+        self.img_channels = self.imgs[0].shape[1]
         self.transform = transform
         self.transform_fx = torchvision.transforms.Compose([
             MyRotationTransform(),
@@ -88,6 +136,16 @@ class ProtoPlanetaryDisks(Dataset):
 
 
     def __getitem__(self, index):
+        """
+        Parameters
+        ----------
+        index : int
+            positional index 
+        Returns
+        -------
+            image and metadata at possition [index], applying set of 
+            transform_fx if needed.
+        """
         imgs = self.imgs[index]
         meta = self.meta[index]
         if self.transform:
@@ -99,7 +157,25 @@ class ProtoPlanetaryDisks(Dataset):
 
     def get_dataloader(self, batch_size=32, shuffle=True,
                        test_split=0.2, random_seed=42):
-
+        """
+        Parameters
+        ----------
+        batch_size : int
+            size of each batch
+        shuffle    : bool
+            whether to shuffle or not the samples
+        test_split : float
+            fraction of the dataset to be used as test sample
+        random_seed: int
+            initialization of random seed
+        
+        Returns
+        -------
+        train_loader : 
+            dataset loader with training instances 
+        test_loader  : 
+            dataset loader with testing instances 
+        """
         np.random.seed(random_seed)
         if test_split == 0.:
             train_loader = DataLoader(self, batch_size=batch_size,
@@ -130,6 +206,31 @@ class ProtoPlanetaryDisks(Dataset):
 
 
 class MNIST(Dataset):
+    """
+    Dataset class that loads MNISt hand-writen digits,
+    the dataset has shape [N, C, H, W] = [36518, 1, 187, 187]
+    ...
+    
+    Attributes
+    ----------
+    train     : dataset
+        train dataset
+    test      : dataset
+        test  dataset
+    img_dim   : int
+        image dimension, assuming square ratio
+    
+    Methods
+    -------
+    __getitem__(self, index)
+        return data in the index position, apply transform_fx if transform
+        is True
+    __len__(self)
+        return the total length of the entire dataset
+    get_dataloader(self, batch_size=32, shuffle=True,
+                   test_split=0.2, random_seed=42)
+        return a dataloader object for trainning and testing
+    """
     def __init__(self, machine='local'):
         if machine == 'local':
             mnist_path = '%s/data/' % (root)
@@ -161,7 +262,25 @@ class MNIST(Dataset):
 
     def get_dataloader(self, batch_size=32, shuffle=True,
                        test_split=.2, random_seed=32):
-
+        """
+        Parameters
+        ----------
+        batch_size : int
+            size of each batch
+        shuffle    : bool
+            whether to shuffle or not the samples
+        test_split : float
+            fraction of the dataset to be used as test sample
+        random_seed: int
+            initialization of random seed
+        
+        Returns
+        -------
+        train_loader : 
+            dataset loader with training instances 
+        test_loader  : 
+            dataset loader with testing instances 
+        """
         train_loader = DataLoader(self.train,
                                   batch_size=batch_size,
                                   shuffle=shuffle)

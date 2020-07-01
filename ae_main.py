@@ -1,3 +1,15 @@
+"""AE main training script
+This script allows the user to train an AE model using Protoplanetary disk
+images loaded with the 'dataset.py' class, AE model located in 'ae_model.py' class,
+and the trainig loop coded in 'ae_training.py'. 
+The script also uses Weight & Biases framework to log metrics, model hyperparameters, configuration parameters, and training figures.
+This file contains the following
+functions:
+    * run_code - runs the main code
+For help, run:
+    python ae_main.py --help
+"""
+
 import sys
 import argparse
 import torch
@@ -11,13 +23,14 @@ import wandb
 
 torch.autograd.set_detect_anomaly(True)
 
+# set random seed
 rnd_seed = 13
 np.random.seed(rnd_seed)
 torch.manual_seed(rnd_seed)
 torch.cuda.manual_seed_all(rnd_seed)
 #os.environ['PYTHONHASHSEED'] = str(rnd_seed)
 
-# Config #
+# program flags
 parser = argparse.ArgumentParser(description='AutoEncoder')
 parser.add_argument('--dry-run', dest='dry_run', action='store_true',
                     default=False,
@@ -55,14 +68,15 @@ parser.add_argument('--comment', dest='comment', type=str, default='',
                     help='extra comments')
 args = parser.parse_args()
 
-# Initialize W&B project
-wandb.init(project="PPD-AE", tags='AE')
+# Initialize W&B project and save user defined flags
+wandb.init(project="PPD-AE", tags=['AE'])
 wandb.config.update(args)
 wandb.config.rnd_seed = rnd_seed
 
 
 # run main program
 def run_code():
+    # asses which device will be used, CPY or GPU
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if device.type == 'cuda':
         torch.cuda.empty_cache()
@@ -80,8 +94,8 @@ def run_code():
         print('No items in training set...')
         print('Exiting!')
         sys.exit()
-
     print('Dataset size: ', len(dataset))
+    
     # data loaders for training and testing
     train_loader, test_loader = dataset.get_dataloader(batch_size=args.batch_size,
                                                        shuffle=True,
@@ -96,10 +110,12 @@ def run_code():
     print('Physic dimension: ', wandb.config.physics_dim)
 
     # Define AE model, Ops, and Train #
-    model = ConvLin_AutoEncoder(latent_dim=args.latent_dim,
-                                img_dim=dataset.img_dim,
-                                kernel=args.kernel_size,
-                                n_conv_blocks=args.conv_blocks)
+    # To used other AE models change the following line,
+    # different types of AE models are stored in src/ae_model.py
+    model = ResNet_Tconv_AE(latent_dim=args.latent_dim,
+                            img_dim=dataset.img_dim,
+                            in_ch=dataset.imgs.shape[1])
+    # log model architecture and gradients to wandb
     wandb.watch(model, log='gradients')
 
     wandb.config.n_train_params = count_parameters(model)
@@ -134,11 +150,11 @@ def run_code():
     print('Optimizer    :', optimizer)
     print('LR Scheduler :', scheduler.__class__.__name__)
 
-    # Train model
     print('########################################')
     print('########  Running in %4s  #########' % (device))
     print('########################################')
 
+    # initialize trainer
     trainer = Trainer(model, optimizer, args.batch_size, wandb,
                       scheduler=scheduler, print_every=500,
                       device=device)
@@ -147,6 +163,7 @@ def run_code():
         print('******** DRY RUN ******** ')
         return
 
+    # run training/testing iterations
     trainer.train(train_loader, test_loader, args.num_epochs,
                   save=True, early_stop=args.early_stop)
 
