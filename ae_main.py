@@ -69,7 +69,7 @@ parser.add_argument('--comment', dest='comment', type=str, default='',
 args = parser.parse_args()
 
 # Initialize W&B project and save user defined flags
-wandb.init(project="PPD-AE", tags=['AE'])
+wandb.init(entity='deep_ppd', project="PPD-AE", tags=['AE'])
 wandb.config.update(args)
 wandb.config.rnd_seed = rnd_seed
 
@@ -112,7 +112,7 @@ def run_code():
     # Define AE model, Ops, and Train #
     # To used other AE models change the following line,
     # different types of AE models are stored in src/ae_model.py
-    model = ResNet_Tconv_AE(latent_dim=args.latent_dim,
+    model = ConvUpSamp_AE(latent_dim=args.latent_dim,
                             img_dim=dataset.img_dim,
                             in_ch=dataset.imgs.shape[1])
     # log model architecture and gradients to wandb
