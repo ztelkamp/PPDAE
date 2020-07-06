@@ -278,7 +278,7 @@ class Trainer():
         if i % self.print_every == 0:
             print("Training iteration %i, global step %i" %
                   (i + 1, self.num_steps))
-            print("Loss: %.4f" % (self.train_loss['Loss'][-1]))
+            print("Loss: %.6f" % (self.train_loss['Loss'][-1]))
 
             self.wb.log({'Train_Loss': self.train_loss['Loss'][-1]},
                         step=self.num_steps)
@@ -297,7 +297,7 @@ class Trainer():
         # print scalars to std output and save scalars/hist to W&B
         print('*** TEST LOSS ***')
         print("Epoch %i, global step %i" % (ep, self.num_steps))
-        print("Loss: %.4f" % (self.test_loss['Loss'][-1]))
+        print("Loss: %.6f" % (self.test_loss['Loss'][-1]))
 
         self.wb.log({'Test_Loss': self.test_loss['Loss'][-1]},
                     step=self.num_steps)

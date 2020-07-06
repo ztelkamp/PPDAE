@@ -128,7 +128,7 @@ class ProtoPlanetaryDisks(Dataset):
             self.imgs = self.imgs[idx]
             self.meta = self.meta[idx]
         self.img_dim = self.imgs[0].shape[-1]
-        self.img_channels = self.imgs[0].shape[1]
+        self.img_channels = self.imgs[0].shape[0]
         self.transform = transform
         self.transform_fx = torchvision.transforms.Compose([
             MyRotationTransform(),
@@ -253,6 +253,7 @@ class MNIST(Dataset):
                     (0.1307,), (0.3081,))
             ]))
         self.img_dim = self.test[0][0].shape[-1]
+        self.img_channels = self.test[0][0].shape[0]
 
     def __getitem__(self, index):
         return self.test[index]

@@ -112,9 +112,10 @@ def run_code():
     # Define AE model, Ops, and Train #
     # To used other AE models change the following line,
     # different types of AE models are stored in src/ae_model.py
-    model = ConvUpSamp_AE(latent_dim=args.latent_dim,
+    print(dataset.img_dim, dataset.img_channels)
+    model = Linear_AE(latent_dim=args.latent_dim,
                             img_dim=dataset.img_dim,
-                            in_ch=dataset.imgs.shape[1])
+                            in_ch=dataset.img_channels)
     # log model architecture and gradients to wandb
     wandb.watch(model, log='gradients')
 
@@ -125,7 +126,7 @@ def run_code():
     print('\n')
 
     # Initialize optimizers
-    optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-6)
 
     # Learning Rate scheduler
     if args.lr_sch == 'step':
