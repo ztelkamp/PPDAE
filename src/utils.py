@@ -57,19 +57,25 @@ def plot_recon_wall(xhat, x, epoch=0):
     v_max = np.max([np.max(x), np.max(xhat)])
 
     for i in range(ncols):
-        axis[0, i].imshow(x[i, 0, :, :], interpolation='bilinear',
-                          cmap=cm.gray, vmin=v_min, vmax=v_max, origin='upper', aspect='equal')
-        axis[1, i].imshow(xhat[i, 0, :, :], interpolation='bilinear',
-                          cmap=cm.gray, vmin=v_min, vmax=v_max, origin='upper', aspect='equal')
-        axis[2, i].imshow(x[i, 0, :, :] - xhat[i, 0, :, :],
+        im1 = axis[0, i].imshow(x[i, 0, :, :], interpolation='bilinear',
+                          cmap=cm.jet, vmin=v_min, vmax=v_max, origin='upper', aspect='equal')
+        im2 = axis[1, i].imshow(xhat[i, 0, :, :], interpolation='bilinear',
+                          cmap=cm.jet, vmin=v_min, vmax=v_max, origin='upper', aspect='equal')
+        im3 = axis[2, i].imshow(x[i, 0, :, :] - xhat[i, 0, :, :],
                           interpolation='bilinear',
-                          cmap=cm.gray, vmin=v_min, vmax=v_max, origin='upper', aspect='equal')
+                          cmap=cm.jet, vmin=v_min, vmax=v_max, origin='upper', aspect='equal')
     for ax in axis.ravel():
         ax.axes.get_xaxis().set_visible(False)
         ax.axes.get_yaxis().set_visible(False)
     fig.subplots_adjust(wspace=0, hspace=0, left=0, right=1)
     fig.suptitle('Reconstruction [Epoch %s]' % epoch,
                  fontsize=20, y=.95)
+    ax_list = []
+    for i in range(3):
+      for j in range(ncols):
+        ax_list.append(axis[i,j])
+      
+    fig.colorbar(im1, ax = ax_list)
     fig.canvas.draw()
     return fig
 
