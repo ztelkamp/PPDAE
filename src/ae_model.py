@@ -128,7 +128,7 @@ class Linear_AE(nn.Module):
             nn.Dropout(dropout),
             nn.ReLU(),
             nn.Linear(320, self.img_size),
-            nn.Sigmoid()
+            nn.Tanh()
         )
 
     def encode(self, x):
