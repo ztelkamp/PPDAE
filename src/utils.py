@@ -25,11 +25,12 @@ if socket.gethostname() == 'exalearn':
 import matplotlib.pyplot as plt
 import seaborn as sb
 import matplotlib.cm as cm
+from matplotlib import colors
 
 path = os.path.dirname(os.getcwd())
 
 
-def plot_recon_wall(xhat, x, epoch=0):
+def plot_recon_wall(xhat, x, epoch=0, log=True):
     """Light-curves wall plot, function used during VAE training phase.
     Figure designed and ready to be appended to W&B logger.
 
@@ -55,27 +56,37 @@ def plot_recon_wall(xhat, x, epoch=0):
     fig, axis = plt.subplots(nrows=3, ncols=ncols, figsize=(ncols, 4))
     v_min = np.min([np.min(x), np.min(xhat)])
     v_max = np.max([np.max(x), np.max(xhat)])
-
+    if log:
+        norm = colors.SymLogNorm(vmin=v_min, vmax=v_max, linthresh=1)
+    else:
+        norm = None
+    
     for i in range(ncols):
         im1 = axis[0, i].imshow(x[i, 0, :, :], interpolation='bilinear',
-                          cmap=cm.jet, vmin=v_min, vmax=v_max, origin='upper', aspect='equal')
+                          cmap=cm.viridis, origin='upper', aspect='equal',
+                         vmin=v_min, vmax=v_max, norm=norm)
         im2 = axis[1, i].imshow(xhat[i, 0, :, :], interpolation='bilinear',
-                          cmap=cm.jet, vmin=v_min, vmax=v_max, origin='upper', aspect='equal')
+                          cmap=cm.viridis, origin='upper', aspect='equal',
+                         vmin=v_min, vmax=v_max, norm=norm)
         im3 = axis[2, i].imshow(x[i, 0, :, :] - xhat[i, 0, :, :],
                           interpolation='bilinear',
-                          cmap=cm.jet, vmin=v_min, vmax=v_max, origin='upper', aspect='equal')
+                          cmap=cm.viridis, origin='upper', aspect='equal',
+                         vmin=v_min, vmax=v_max, norm=norm)
+
     for ax in axis.ravel():
         ax.axes.get_xaxis().set_visible(False)
         ax.axes.get_yaxis().set_visible(False)
     fig.subplots_adjust(wspace=0, hspace=0, left=0, right=1)
     fig.suptitle('Reconstruction [Epoch %s]' % epoch,
                  fontsize=20, y=.95)
+
     ax_list = []
     for i in range(3):
       for j in range(ncols):
         ax_list.append(axis[i,j])
       
     fig.colorbar(im1, ax = ax_list)
+
     fig.canvas.draw()
     return fig
 
